@@ -1,0 +1,114 @@
+  <!DOCTYPE html>
+  <html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+  </head>
+  <body>
+    <canvas id="webgl"></canvas>
+    <script>
+      var VSHADER_SOURCE =[    
+          "attribute vec4 a_Position;",                            
+          "uniform mat4 u_ProjMatrix;",
+          "uniform float u_PointSize;",
+          "void main() {",
+              "    gl_PointSize = u_PointSize;",
+              "    gl_Position = u_ProjMatrix * a_Position;",
+          "}"
+
+      ].join("\n")
+      var FSHADER_SOURCE =
+      [
+              "precision mediump float;",    
+              "uniform sampler2D u_Sampler;",               
+              "void main() {",     　　　　　"　　gl_FragColor = texture2D(u_Sampler,vec2(gl_PointCoord.x,1.0 - gl_PointCoord.y));",
+              "}"
+
+          ].join("\n")
+
+          //声明初始化着色器函数
+       function initShader(gl,vertexShaderSource,fragmentShaderSource){
+           //创建顶点着色器对象
+           var vertexShader = gl.createShader(gl.VERTEX_SHADER);
+         //创建片元着色器对象
+          var fragmentShader = gl.createShader(gl.FRAGMENT_SHADER);
+           //引入顶点、片元着色器源代码
+           gl.shaderSource(vertexShader,vertexShaderSource);
+           gl.shaderSource(fragmentShader,fragmentShaderSource);
+           //编译顶点、片元着色器
+           gl.compileShader(vertexShader);
+           gl.compileShader(fragmentShader);
+   
+           //创建程序对象program
+           var program = gl.createProgram();
+           //附着顶点着色器和片元着色器到program
+          gl.attachShader(program,vertexShader);
+           gl.attachShader(program,fragmentShader);
+           //链接program
+           gl.linkProgram(program);
+           //使用program
+           gl.useProgram(program);
+           //返回程序program对象
+           return program;
+       }
+
+  function main() {
+      var canvas = document.getElementById('webgl');
+      var gl = getWebGLContext(canvas);
+      if (!gl) {
+              console.log('Failed to get the rendering context for WebGL');
+              return;
+      }
+      if (!initShader(gl, VSHADER_SOURCE, FSHADER_SOURCE)) {
+              console.log('Failed to intialize shaders.');
+          return;
+      }  
+      var projMatrix4=new Matrix4();
+      projMatrix4.setOrtho(-1,1,-1,1,0.0,1.0);
+      var u_projMatrix=gl.getUniformLocation(gl.program,'u_ProjMatrix');  
+      gl.uniformMatrix4fv(u_projMatrix,false,projMatrix4.elements);    var position=gl.getAttribLocation(gl.program,'a_Position');
+      gl.vertexAttrib3f(position,0.0,0.0,0.0);
+
+      gl.clearColor(0, 0, 0, 1);
+      gl.clear(gl.COLOR_BUFFER_BIT);
+        
+      loadImg(gl);
+
+  }
+  function loadImg(gl){
+      var image=new Image();
+      image.onload=function(){
+          drawPic(gl,image)
+      }
+      image.src="pic.png";
+  }
+
+  function drawPic(gl,image){
+      var width=image.width; 
+      var height=image.height; 
+
+      var pointSize=gl.getUniformLocation(gl.program,"u_PointSize");
+      gl.uniform1f(pointSize,Math.max(width,height));
+      
+      var texture=gl.createTexture();
+      //gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,1);
+      gl.activeTexture(gl.TEXTURE0);
+      gl.bindTexture(gl.TEXTURE_2D,texture);
+      
+      gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.NEAREST);
+      gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.NEAREST);
+      gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
+      
+      gl.uniform1i(gl.getUniformLocation(gl.program,"u_Sampler"),0);
+      gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,image);
+      gl.clear(gl.COLOR_BUFFER_BIT);
+      gl.drawArrays(gl.POINTS,0,1);
+
+      gl.bindTexture(gl.TEXTURE_2D, null);
+  }
+    </script>
+  </body>
+  </html>
